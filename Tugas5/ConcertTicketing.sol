@@ -6,10 +6,6 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 /// @title ConcertTicketing
 /// @notice Prototype tiket konser sebagai NFT ERC-721 dengan URI metadata per token.
 contract ConcertTicketing is ERC721URIStorage {
-    constructor() ERC721("Concert Ticket", "CTIX") {
-        promoter = msg.sender;
-    }
-
     enum Status {
         CREATED,
         APPROVED,
@@ -45,10 +41,14 @@ contract ConcertTicketing is ERC721URIStorage {
     mapping(uint256 => Ticket) public tickets;
     mapping(uint256 => History[]) private histories;
 
-    event TicketCreated(uint256 indexed ticketId, string eventName, address indexed owner, string tokenURI);
+    event TicketCreated(uint256 indexed ticketId, string eventName, address indexed owner, string uri);
     event StatusUpdated(uint256 indexed ticketId, Status status, address indexed actor);
     event OwnershipTransferred(uint256 indexed ticketId, address indexed from, address indexed to);
     event PromoterChanged(address indexed oldPromoter, address indexed newPromoter);
+
+    constructor() ERC721("Concert Ticket", "CTIX") {
+        promoter = msg.sender;
+    }
 
     modifier onlyPromoter() {
         require(msg.sender == promoter, "Hanya promotor");
@@ -151,19 +151,18 @@ contract ConcertTicketing is ERC721URIStorage {
             string memory metadataURI
         )
     {
-        Ticket memory ticket = tickets[_ticketId];
-        require(ticket.id != 0, "Tiket tidak ada");
-        return (
-            ticket.eventName,
-            ticket.category,
-            ticket.price,
-            ownerOf(_ticketId),
-            ticket.status,
-            ticket.quota,
-            ticket.date,
-            ticket.timestamp,
-            tokenURI(_ticketId)
-        );
+        Ticket storage t = tickets[_ticketId];
+        require(t.id != 0, "Tiket tidak ada");
+
+        eventName = t.eventName;
+        category = t.category;
+        price = t.price;
+        owner = ownerOf(_ticketId);
+        status = t.status;
+        quota = t.quota;
+        date = t.date;
+        timestamp = t.timestamp;
+        metadataURI = tokenURI(_ticketId);
     }
 
     function getHistory(uint256 _ticketId) external view returns (History[] memory) {
