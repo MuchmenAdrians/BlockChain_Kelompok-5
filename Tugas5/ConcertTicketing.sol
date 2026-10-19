@@ -5,8 +5,9 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 /// @title ConcertTicketing
 /// @notice Prototipe tiket konser sebagai NFT ERC-721 dengan URI metadata per token.
-/// @dev Promotor membuat tiket dan mengubah status. Pemilik NFT boleh memindahkan
-///      tiket selama status belum CHECKED_IN.
+/// @dev Promotor membuat tiket, menunjuk petugas gerbang, dan mengubah status
+///      sampai SOLD. Petugas gerbang menetapkan VALIDATED, CHECKED_IN, dan USED.
+///      Pemilik NFT boleh memindahkan tiket selama status belum CHECKED_IN.
 contract ConcertTicketing is ERC721URIStorage {
     // ---------------------------------------------------------------------
     // Tipe data
@@ -44,6 +45,7 @@ contract ConcertTicketing is ERC721URIStorage {
     // Penyimpanan
     // ---------------------------------------------------------------------
     address public promoter;
+    mapping(address => bool) public isGate; // petugas gerbang (VALIDATED, CHECKED_IN, USED)
     uint256 private nextTokenId = 1;
 
     mapping(uint256 => Ticket) private tickets;
@@ -56,6 +58,7 @@ contract ConcertTicketing is ERC721URIStorage {
     event StatusUpdated(uint256 indexed ticketId, Status status, address indexed actor);
     event OwnershipTransferred(uint256 indexed ticketId, address indexed from, address indexed to);
     event PromoterChanged(address indexed oldPromoter, address indexed newPromoter);
+    event GateSet(address indexed account, bool allowed);
 
     // ---------------------------------------------------------------------
     // Konstruktor dan modifier
@@ -82,6 +85,21 @@ contract ConcertTicketing is ERC721URIStorage {
         address oldPromoter = promoter;
         promoter = _newPromoter;
         emit PromoterChanged(oldPromoter, _newPromoter);
+    }
+
+    /// @notice Promotor menunjuk atau mencabut petugas gerbang.
+    function setGate(address _account, bool _allowed) external onlyPromoter {
+        require(_account != address(0), "Alamat invalid");
+        isGate[_account] = _allowed;
+        emit GateSet(_account, _allowed);
+    }
+
+    /// @dev Siapa yang berwenang menetapkan status tujuan tertentu.
+    ///      VALIDATED, CHECKED_IN, dan USED -> petugas gerbang;
+    ///      status lainnya (APPROVED, ON_SALE, SOLD) -> promotor.
+    function _isAuthorizedFor(Status _target, address _account) internal view returns (bool) {
+        if (uint8(_target) >= uint8(Status.VALIDATED)) return isGate[_account];
+        return _account == promoter;
     }
 
     // ---------------------------------------------------------------------
@@ -125,14 +143,16 @@ contract ConcertTicketing is ERC721URIStorage {
     }
 
     // ---------------------------------------------------------------------
-    // 2. Mengubah status (hanya promotor, maju satu tahap)
-    //    Urutan cek sama dengan flowchart: tiket ada -> promotor -> transisi.
+    // 2. Mengubah status (maju satu tahap, oleh pihak yang berwenang)
+    //    Urutan cek: tiket ada -> berwenang -> transisi.
+    //    Promotor: APPROVED, ON_SALE, SOLD
+    //    Petugas gerbang: VALIDATED, CHECKED_IN, USED
     // ---------------------------------------------------------------------
     function updateStatus(uint256 _ticketId, Status _status)
         external
         ticketExists(_ticketId)
     {
-        require(msg.sender == promoter, "Hanya promotor");
+        require(_isAuthorizedFor(_status, msg.sender), "Tidak berwenang untuk status ini");
 
         Ticket storage ticket = tickets[_ticketId];
         require(ticket.status != Status.USED, "Tiket sudah USED");
