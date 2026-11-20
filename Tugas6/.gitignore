@@ -1,0 +1,6 @@
+.venv/
+node_modules/
+cache/
+artifacts/
+deployment.json
+__pycache__/
