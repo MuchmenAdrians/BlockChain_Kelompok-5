@@ -33,10 +33,38 @@ contract ConcertTicketing {
         uint256 timestamp;
     }
 
+    address public promoter;
+    mapping(address => bool) public isGate; // petugas gerbang (VALIDATED, CHECKED_IN, USED)
+
     uint256 private nextTicketId = 1;
 
     mapping(uint256 => Ticket) public tickets;
     mapping(uint256 => History[]) private histories;
+
+    event GateSet(address indexed account, bool allowed);
+
+    constructor() {
+        promoter = msg.sender;
+    }
+
+    modifier onlyPromoter() {
+        require(msg.sender == promoter, "Hanya promotor");
+        _;
+    }
+
+    /// @notice Promotor menunjuk atau mencabut petugas gerbang.
+    function setGate(address _account, bool _allowed) external onlyPromoter {
+        require(_account != address(0), "Alamat invalid");
+        isGate[_account] = _allowed;
+        emit GateSet(_account, _allowed);
+    }
+
+    /// @dev VALIDATED, CHECKED_IN, dan USED -> petugas gerbang;
+    ///      status lainnya (APPROVED, ON_SALE, SOLD) -> promotor.
+    function _isAuthorizedFor(Status _target, address _account) internal view returns (bool) {
+        if (uint8(_target) >= uint8(Status.VALIDATED)) return isGate[_account];
+        return _account == promoter;
+    }
 
     event TicketCreated(
         uint256 indexed ticketId,
@@ -65,7 +93,7 @@ contract ConcertTicketing {
         uint256 _price,
         uint256 _quota,
         uint256 _date
-    ) external {
+    ) external onlyPromoter {
 
         require(bytes(_eventName).length > 0, "Event kosong");
         require(bytes(_category).length > 0, "Kategori kosong");
@@ -105,7 +133,7 @@ contract ConcertTicketing {
         Ticket storage ticket = tickets[_ticketId];
 
         require(ticket.id != 0, "Tiket tidak ada");
-        require(ticket.owner == msg.sender, "Bukan pemilik");
+        require(_isAuthorizedFor(_status, msg.sender), "Tidak berwenang untuk status ini");
         require(
             uint8(_status) == uint8(ticket.status) + 1,
             "Status invalid"
