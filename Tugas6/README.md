@@ -78,11 +78,11 @@ Status hanya bisa naik **satu tahap** pada satu waktu.
 
 ```mermaid
 flowchart LR
-    subgraph P["🎤 Promotor"]
-        A([CREATED]) --> B([APPROVED]) --> C([ON_SALE]) --> D([SOLD])
+    subgraph Promotor
+        A[CREATED] --> B[APPROVED] --> C[ON_SALE] --> D[SOLD]
     end
-    subgraph G["🛂 Petugas Gerbang"]
-        E([VALIDATED]) --> F([CHECKED_IN]) --> H([USED])
+    subgraph Petugas_Gerbang
+        E[VALIDATED] --> F[CHECKED_IN] --> G[USED]
     end
     D --> E
 ```
@@ -93,10 +93,10 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    U[👤 Pengguna] --> S[Streamlit UI<br/>app.py]
-    S --> W[Web3.py]
-    W -->|JSON-RPC<br/>127.0.0.1:8545| N[Hardhat Node]
-    N --> C[(ConcertTicketing.sol<br/>ERC-721)]
+    U["Pengguna"] --> S["Streamlit UI (app.py)"]
+    S --> W["Web3.py"]
+    W --> N["Hardhat Node (127.0.0.1:8545)"]
+    N --> C["Smart Contract ConcertTicketing.sol (ERC-721)"]
 ```
 
 ---
@@ -264,6 +264,6 @@ Pengaturan ada di bagian atas `app.py`:
 
 <div align="center">
 
-Dibuat oleh **Kelompok 5**: Much. Mentari Adriansyah, Bintang Mutiara Arsy, dan Muh. Hafizh Abdul Karim · Informatika UINSSC
+Dibuat oleh **Kelompok 5**: Much. Mentari Adriansyah, Bintang Mutiara Arsy, dan Muh. Hafizh Abdul Karim· Informatika UINSSC
 
 </div>
